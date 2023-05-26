@@ -36,33 +36,34 @@ public class UsedMemoryController {
 
     @GetMapping("/average")
     @ResponseStatus(HttpStatus.OK)
-    public Float getAverage() {
+    public String getAverage() {
         KafkaStreams kafkaStreams = this.streamsBuilderFactoryBean.getKafkaStreams();
         ReadOnlyWindowStore<String, UsedMemoryCountAndSum> store = kafkaStreams.store(
-                StoreQueryParameters.fromNameAndType("aggr", QueryableStoreTypes.windowStore())
+                StoreQueryParameters.fromNameAndType(UsedMemoryAggregator.AGGREGATION_STORE, QueryableStoreTypes.windowStore())
         );
 
         Instant timeTo = Instant.now();
         Instant timeFrom = Instant.ofEpochMilli(1682614800000L);
         WindowStoreIterator<UsedMemoryCountAndSum> iterator = store.fetch(USED_MEMORY, timeFrom, timeTo);
-        Float latest = null;
+        Float latestAverage = null;
+        long latestWindowTimestanp = 0l;
         while (iterator.hasNext()) {
             KeyValue<Long, UsedMemoryCountAndSum> next = iterator.next();
-            long windowTimestamp = next.key;
-            latest = next.value.getAverage();
-            logger.info("Average used system memory @ time " + LocalDateTime.ofInstant(Instant.ofEpochMilli(windowTimestamp), ZoneId.systemDefault()) + " is " + next.value.getAverage());
+            latestWindowTimestanp = next.key;
+            latestAverage = next.value.getAverage();
+            logger.info("Average used system memory @ time " + LocalDateTime.ofInstant(Instant.ofEpochMilli(latestWindowTimestanp), ZoneId.systemDefault()) + " is " + next.value.getAverage());
         }
 
         // close the iterator to release resources
         iterator.close();
-        return latest;
+        return "Average used system memory @ time " + LocalDateTime.ofInstant(Instant.ofEpochMilli(latestWindowTimestanp), ZoneId.systemDefault()) + " is " + latestAverage;
     }
 
     @PostMapping()
     @ResponseStatus(HttpStatus.CREATED)
     public void createUsedMemory(@RequestBody UsedMemory usedMemory) {
         logger.info("Sending used memory: ", usedMemory);
-        this.kafkaTemplate.send(MemoryApplication.ANALYTICS_USED_MEMORY_TOPIC, USED_MEMORY, usedMemory);
+        this.kafkaTemplate.send(MemoryApplication.USED_MEMORY_TOPIC, USED_MEMORY, usedMemory);
     }
 
 }

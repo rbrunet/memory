@@ -2,7 +2,6 @@ package org.forwardlogic.kafka.streams.memory;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;
@@ -31,7 +30,7 @@ import static org.apache.kafka.streams.StreamsConfig.*;
 public class MemoryApplication {
 
 	private static final String BOOTSTRAP_SERVERS = "localhost:9092";
-	public static final String ANALYTICS_USED_MEMORY_TOPIC = "used-memory";
+	public static final String USED_MEMORY_TOPIC = "used-memory";
 
 
 	@Value(value = "${spring.kafka.streams.state.dir}")

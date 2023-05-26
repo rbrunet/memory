@@ -15,12 +15,16 @@ import java.util.Objects;
 @Component
 public class UsedMemoryAggregator {
 
+    public static final String AGGREGATION_STORE = "aggregation-store";
+    public static final String AGGREGATED_USED_MEMORY_TOPIC = "aggregated-used-memory";
+
     @Autowired
     void buildPipeline(StreamsBuilder streamsBuilder) {
 
-        KStream<String, UsedMemory> stream = streamsBuilder.stream(MemoryApplication.ANALYTICS_USED_MEMORY_TOPIC, Consumed.with(new Serdes.StringSerde(),
+        KStream<String, UsedMemory> stream = streamsBuilder.stream(MemoryApplication.USED_MEMORY_TOPIC, Consumed.with(new Serdes.StringSerde(),
                 new UsedMemorySerde()));
 
+        // Aggregate every hour
         KTable<Windowed<String>, UsedMemoryCountAndSum> countAndSumStream = stream.groupByKey().windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofHours(1))).aggregate(() -> new UsedMemoryCountAndSum(0L, 0.0F), (key, value, aggregate) -> {
             if (Objects.nonNull(value)) {
                 aggregate.setCount(aggregate.getCount() + 1);
@@ -28,8 +32,8 @@ public class UsedMemoryAggregator {
                 aggregate.computeAverage();
             }
             return aggregate;
-        }, Materialized.<String, UsedMemoryCountAndSum, WindowStore<Bytes, byte[]>>as("aggr"));
+        }, Materialized.<String, UsedMemoryCountAndSum, WindowStore<Bytes, byte[]>>as(AGGREGATION_STORE));
 
-        countAndSumStream.toStream().map((windowedKey, value) -> KeyValue.pair(windowedKey.key(), value)).to("aggregated-used-memory", Produced.with(Serdes.String(), new UsedMemoryCountAndSumSerde()));
+        countAndSumStream.toStream().map((windowedKey, value) -> KeyValue.pair(windowedKey.key(), value)).to(AGGREGATED_USED_MEMORY_TOPIC, Produced.with(Serdes.String(), new UsedMemoryCountAndSumSerde()));
     }
 }
