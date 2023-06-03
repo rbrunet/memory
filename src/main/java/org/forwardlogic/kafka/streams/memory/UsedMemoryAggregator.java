@@ -25,14 +25,17 @@ public class UsedMemoryAggregator {
                 new UsedMemorySerde()));
 
         // Aggregate every hour
-        KTable<Windowed<String>, UsedMemoryCountAndSum> countAndSumStream = stream.groupByKey().windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofHours(1))).aggregate(() -> new UsedMemoryCountAndSum(0L, 0.0F), (key, value, aggregate) -> {
-            if (Objects.nonNull(value)) {
-                aggregate.setCount(aggregate.getCount() + 1);
-                aggregate.setSum(aggregate.getSum() + value.usedMemoryInKB());
-                aggregate.computeAverage();
-            }
-            return aggregate;
-        }, Materialized.<String, UsedMemoryCountAndSum, WindowStore<Bytes, byte[]>>as(AGGREGATION_STORE));
+        KTable<Windowed<String>, UsedMemoryCountAndSum> countAndSumStream = stream
+                .groupByKey()
+                .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofHours(1)))
+                .aggregate(() -> new UsedMemoryCountAndSum(0L, 0.0F), (key, value, aggregate) -> {
+                    if (Objects.nonNull(value)) {
+                        aggregate.setCount(aggregate.getCount() + 1);
+                        aggregate.setSum(aggregate.getSum() + value.usedMemoryInKB());
+                        aggregate.computeAverage();
+                    }
+                    return aggregate;
+                }, Materialized.<String, UsedMemoryCountAndSum, WindowStore<Bytes, byte[]>>as(AGGREGATION_STORE));
 
         countAndSumStream.toStream().map((windowedKey, value) -> KeyValue.pair(windowedKey.key(), value)).to(AGGREGATED_USED_MEMORY_TOPIC, Produced.with(Serdes.String(), new UsedMemoryCountAndSumSerde()));
     }
