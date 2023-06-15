@@ -14,11 +14,14 @@ import org.apache.kafka.streams.state.WindowStoreIterator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.apache.kafka.streams.StreamsConfig.*;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -26,7 +29,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.*;
 
-class MemoryFilterProcessorTest {
+class MemoryMemoryFilterProcessorTest {
     private Properties props;
     private MemoryFilterProcessor processor;
     private TestInputTopic<String, UsedMemory> inputTopic;
@@ -49,7 +52,7 @@ class MemoryFilterProcessorTest {
 
 
     @Test
-    void buildPipeline() throws Exception {
+    void test_normal_amount() throws Exception {
         StreamsBuilder streamsBuilder = new StreamsBuilder();
         this.processor.buildPipeline(streamsBuilder);
 
@@ -87,6 +90,51 @@ class MemoryFilterProcessorTest {
 
             actual = outputTopic.readKeyValuesToList();
             assertThat(actual.size(), is(2));
+        }
+    }
+
+    @Test
+    void test_performance() throws Exception {
+        StreamsBuilder streamsBuilder = new StreamsBuilder();
+        this.processor.buildPipeline(streamsBuilder);
+
+        Topology topology = streamsBuilder.build();
+
+        try (TopologyTestDriver testDriver = new TopologyTestDriver(topology, props)) {
+
+            inputTopic = testDriver.createInputTopic(
+                    MemoryApplication.USED_MEMORY_TOPIC,
+                    Serdes.String().serializer(),
+                    new UsedMemorySerde());
+
+            outputTopic =
+                    testDriver.createOutputTopic(
+                            MemoryFilterProcessor.FILTERED_USED_MEMORY,
+                            Serdes.String().deserializer(),
+                            new UsedMemorySerde());
+
+            int total = 20_000;
+            List<UsedMemory> usedMemoryList = IntStream.range(1, total +1)
+                    .mapToObj(index -> new UsedMemory("10.10.10.1", 150L + 10 * index))
+                    .collect(Collectors.toList());
+
+            this.processor.setMessageFilterString("usedMemoryInKB < 200L");
+
+            Instant start = Instant.now();
+            inputTopic.pipeKeyValueList(usedMemoryList.stream().map(usedMemory -> new KeyValue<>(usedMemory.getKey(), usedMemory)).collect(Collectors.toList()));
+
+            List<KeyValue<String, UsedMemory>> actual = outputTopic.readKeyValuesToList();
+            Instant end = Instant.now();
+            System.out.println("total time in ms is "+ ((float)Duration.between(start,end).toMillis()));
+            assertThat(actual.size(), is(4));
+
+//            this.processor.setMessageFilterString("usedMemoryInKB >= 200L");
+//            inputTopic.pipeInput(firstUsedMemory.getKey(), firstUsedMemory);
+//            inputTopic.pipeInput(secondUsedMemory.getKey(), secondUsedMemory);
+//            inputTopic.pipeInput(thirdUsedMemory.getKey(), thirdUsedMemory);
+//
+//            actual = outputTopic.readKeyValuesToList();
+//            assertThat(actual.size(), is(2));
         }
     }
 }

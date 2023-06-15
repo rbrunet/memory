@@ -8,12 +8,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.expression.EvaluationException;
+import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.ParseException;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 
+import javax.management.InstanceNotFoundException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -24,9 +28,13 @@ public class MemoryFilterProcessor {
     public static final String FILTERED_USED_MEMORY = "filtered-used-memory";
     private final AtomicReference<String> messageFilterString = new AtomicReference<>();
     private final ExpressionParser expressionParser;
+    private Expression expression;
 
     public MemoryFilterProcessor() {
         this.expressionParser = new SpelExpressionParser();
+        if (Objects.isNull(this.messageFilterString.get())) {
+            setMessageFilterString("usedMemoryInKB > 500L");
+        }
     }
 
     @Autowired
@@ -39,8 +47,10 @@ public class MemoryFilterProcessor {
                 .to(FILTERED_USED_MEMORY);
     }
 
-    public void setMessageFilterString(String filter) {
-        this.messageFilterString.set(filter);
+    public void setMessageFilterString(String filterString) {
+        this.messageFilterString.set(filterString);
+        this.expression = this.expressionParser
+                .parseExpression(filterString);
     }
 
     private boolean filterMessage(String key, UsedMemory message) {
@@ -51,9 +61,10 @@ public class MemoryFilterProcessor {
 
         Boolean value = true;
         try {
-            value = this.expressionParser
-                    .parseExpression(filterString)
-                    .getValue(new StandardEvaluationContext(message), Boolean.class);
+            Instant start = Instant.now();
+            value = this.expression.getValue(new StandardEvaluationContext(message), Boolean.class);
+            Instant end = Instant.now();
+            logger.debug("Time for processing filter in millis = " + Duration.between(start, end).toMillis());
         } catch (ParseException parseException) {
             logger.error("Cannot parse filter {}", filterString, parseException);
             value = true;

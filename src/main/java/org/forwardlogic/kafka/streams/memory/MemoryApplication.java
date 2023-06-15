@@ -15,7 +15,7 @@ import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
 import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -24,7 +24,7 @@ import java.util.Map;
 import static org.apache.kafka.streams.StreamsConfig.*;
 
 @SpringBootApplication
-@EnableTransactionManagement
+@EnableScheduling
 @EnableKafka
 @EnableKafkaStreams
 public class MemoryApplication {
