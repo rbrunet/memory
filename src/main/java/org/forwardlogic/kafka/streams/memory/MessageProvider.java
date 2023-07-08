@@ -21,6 +21,6 @@ public class MessageProvider {
 
     @Scheduled(fixedRate = 5_000L)
     public void sendMessages() {
-        this.kafkaTemplate.send(MemoryApplication.USED_MEMORY_TOPIC, new UsedMemory("192.168.1.1", 250 + 10*(this.rd.nextInt(50))));
+        this.kafkaTemplate.send(MemoryApplication.USED_MEMORY_TOPIC, "192.168.1.1.used-memory" ,new UsedMemory("192.168.1.1", 250 + 10*(this.rd.nextInt(50))));
     }
 }

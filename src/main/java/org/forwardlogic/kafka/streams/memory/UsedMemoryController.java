@@ -14,8 +14,6 @@ import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.ParseException;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
-import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -23,15 +21,14 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Optional;
 
-import static org.springframework.http.MediaType.*;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 @RestController
 @RequestMapping(path = "/used-memory")
 public class UsedMemoryController {
     private static final Logger logger = LoggerFactory.getLogger(UsedMemoryController.class);
-    public static final String USED_MEMORY = "127.0.0.1.used-memory";
+    public static final String USED_MEMORY = "192.168.1.1.used-memory";
 
     private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
     private KafkaTemplate<String, UsedMemory> kafkaTemplate;
